@@ -1,0 +1,12 @@
+pandas
+numpy
+scikit-learn
+scipy
+nltk
+contractions
+vaderSentiment
+shap
+plotly
+matplotlib
+seaborn
+jupyter

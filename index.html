@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Segment Menu — Zomato Hyderabad Cluster Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js"></script>
+<style>
+  :root{
+    --ink:#241C15;
+    --ink-soft:#6B5D4A;
+    --paper:#F1E9DA;
+    --paper-deep:#E4D8BE;
+    --paper-line: rgba(36,28,21,0.12);
+    --red:#CB202D;
+    --turmeric:#C98A12;
+    --green:#3C7A5A;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--red); color:#fff;}
+
+  .wrap{max-width:1180px; margin:0 auto; padding:0 28px;}
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(241,233,218,0.88);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--paper-line);
+  }
+  nav .wrap{display:flex; align-items:center; justify-content:space-between; height:64px;}
+  .brand{font-family:'Fraunces',serif; font-weight:700; font-size:1.15rem; letter-spacing:-0.01em;}
+  .brand span{color:var(--red);}
+  .navlinks{display:flex; gap:28px; font-size:0.85rem; font-weight:500; color:var(--ink-soft);}
+  .navlinks a{color:inherit; text-decoration:none; transition:color .15s;}
+  .navlinks a:hover{color:var(--red);}
+  @media (max-width:720px){ .navlinks{display:none;} }
+
+  /* ---------- HERO ---------- */
+  header.hero{padding:96px 0 64px; position:relative; overflow:hidden;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace; font-size:0.78rem; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--red); font-weight:600; margin-bottom:18px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{content:""; width:26px; height:1.5px; background:var(--red); display:inline-block;}
+  h1.display{
+    font-family:'Fraunces',serif; font-weight:600; font-size:clamp(2.6rem, 6vw, 4.6rem);
+    line-height:0.98; letter-spacing:-0.02em; margin:0 0 22px; max-width:820px;
+  }
+  h1.display em{font-style:italic; font-weight:400; color:var(--red);}
+  p.lede{font-size:1.15rem; line-height:1.6; color:var(--ink-soft); max-width:620px; margin:0 0 44px;}
+
+  .stat-strip{display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--paper-line); border-bottom:1px solid var(--paper-line);}
+  .stat{padding:22px 20px 20px 0; border-right:1px solid var(--paper-line);}
+  .stat:last-child{border-right:none;}
+  .stat .num{font-family:'IBM Plex Mono',monospace; font-size:1.9rem; font-weight:600; color:var(--ink);}
+  .stat .lbl{font-size:0.78rem; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.06em; margin-top:4px;}
+  @media (max-width:720px){ .stat-strip{grid-template-columns:repeat(2,1fr);} }
+
+  /* ---------- SECTION HEADERS ---------- */
+  section{padding:72px 0;}
+  .sec-head{margin-bottom:40px; max-width:680px;}
+  .sec-eyebrow{font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px;}
+  h2.sec-title{font-family:'Fraunces',serif; font-size:2.1rem; font-weight:600; margin:0 0 12px; letter-spacing:-0.01em;}
+  .sec-sub{color:var(--ink-soft); font-size:1rem; line-height:1.6;}
+
+  /* ---------- MENU CARDS (signature element) ---------- */
+  .menu-cards{display:grid; grid-template-columns:repeat(3,1fr); gap:22px;}
+  @media (max-width:900px){ .menu-cards{grid-template-columns:1fr;} }
+
+  .menu-card{
+    background:#fff; border:1px solid var(--paper-line); border-radius:var(--radius);
+    padding:28px 26px 26px; position:relative; opacity:0; transform:translateY(18px);
+    transition:opacity .6s ease, transform .6s ease, box-shadow .2s ease;
+    box-shadow:0 1px 2px rgba(36,28,21,0.04);
+  }
+  .menu-card.revealed{opacity:1; transform:translateY(0);}
+  .menu-card:hover{box-shadow:0 12px 28px rgba(36,28,21,0.10); transform:translateY(-3px);}
+  .menu-card .accent-bar{position:absolute; top:0; left:26px; right:26px; height:3px; border-radius:0 0 3px 3px;}
+  .menu-card .card-name{font-family:'Fraunces',serif; font-weight:600; font-size:1.4rem; margin:10px 0 2px;}
+  .menu-card .card-tag{font-size:0.82rem; color:var(--ink-soft); margin-bottom:20px;}
+  .price-badge{
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1.6rem;
+    display:inline-block; margin-bottom:4px;
+  }
+  .price-badge sup{font-size:0.9rem; font-weight:500; margin-right:2px;}
+  .price-label{font-size:0.72rem; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:18px;}
+  .row-label{font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); margin:14px 0 6px;}
+  .stars{font-size:1.05rem; letter-spacing:2px;}
+  .stars .on{color:var(--turmeric);}
+  .stars .off{color:var(--paper-deep);}
+  .meter-track{height:8px; border-radius:5px; background:var(--paper-deep); overflow:hidden;}
+  .meter-fill{height:100%; border-radius:5px;}
+  .card-count{margin-top:20px; padding-top:16px; border-top:1px dashed var(--paper-line); font-size:0.85rem; color:var(--ink-soft);}
+  .card-count b{color:var(--ink); font-family:'IBM Plex Mono',monospace;}
+  .card-blurb{margin-top:14px; font-size:0.92rem; line-height:1.55;}
+
+  /* ---------- CHART PANELS ---------- */
+  .panel{
+    background:#fff; border:1px solid var(--paper-line); border-radius:var(--radius);
+    padding:24px 24px 12px; margin-bottom:24px;
+  }
+  .panel-title{font-family:'Fraunces',serif; font-size:1.05rem; font-weight:600; margin-bottom:4px;}
+  .panel-hint{font-size:0.8rem; color:var(--ink-soft); margin-bottom:14px;}
+  .chart-grid{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
+  @media (max-width:900px){ .chart-grid{grid-template-columns:1fr;} }
+
+  select#metricSelect{
+    font-family:'IBM Plex Mono',monospace; font-size:0.82rem; padding:6px 10px;
+    border:1px solid var(--paper-line); border-radius:8px; background:var(--paper);
+    color:var(--ink); cursor:pointer;
+  }
+
+  /* ---------- RECOMMENDATIONS ---------- */
+  .rec-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:22px;}
+  @media (max-width:900px){ .rec-grid{grid-template-columns:1fr;} }
+  .rec-card{border-left:3px solid var(--paper-deep); padding-left:20px;}
+  .rec-card.red{border-color:var(--red);}
+  .rec-card.turmeric{border-color:var(--turmeric);}
+  .rec-card.green{border-color:var(--green);}
+  .rec-card h3{font-family:'Fraunces',serif; font-size:1.15rem; margin:0 0 10px;}
+  .rec-card p{font-size:0.92rem; line-height:1.6; color:var(--ink-soft); margin:0;}
+
+  /* ---------- FINE PRINT ---------- */
+  .fine-print{
+    background:var(--paper-deep); border-radius:var(--radius); padding:28px 30px;
+    font-size:0.85rem; line-height:1.7; color:var(--ink-soft);
+  }
+  .fine-print h4{font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:0.08em;
+    font-size:0.75rem; color:var(--ink); margin:0 0 12px;}
+
+  footer{padding:40px 0 60px; border-top:1px solid var(--paper-line); font-size:0.82rem; color:var(--ink-soft);}
+  footer .wrap{display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+
+  @media (prefers-reduced-motion: reduce){
+    .menu-card{transition:none; opacity:1; transform:none;}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand">the segment <span>menu</span></div>
+    <div class="navlinks">
+      <a href="#segments">Segments</a>
+      <a href="#explore">Explore</a>
+      <a href="#compare">Compare</a>
+      <a href="#recommend">Recommendations</a>
+      <a href="#notes">Fine Print</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Zomato · Hyderabad · Restaurant Clustering</div>
+    <h1 class="display">Three ways<br>Hyderabad <em>actually</em><br>eats out.</h1>
+    <p class="lede">Unsupervised clustering of 100 Hyderabad restaurants and 10,000 customer reviews surfaced three distinct dining segments — not by price alone, but by what people actually write, and how positively they write it.</p>
+  </div>
+  <div class="wrap">
+    <div class="stat-strip">
+      <div class="stat"><div class="num">100</div><div class="lbl">Restaurants analyzed</div></div>
+      <div class="stat"><div class="num">10,000</div><div class="lbl">Reviews processed</div></div>
+      <div class="stat"><div class="num">03</div><div class="lbl">Segments found</div></div>
+      <div class="stat"><div class="num">0.66</div><div class="lbl">Stability (ARI)</div></div>
+    </div>
+  </div>
+</header>
+
+<section id="segments">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-eyebrow">On the menu today</div>
+      <h2 class="sec-title">The three segments</h2>
+      <p class="sec-sub">Each card reflects the actual average profile of its cluster. The "flavor intensity" bar is average review sentiment (VADER compound score); stars are average rating.</p>
+    </div>
+    <div class="menu-cards" id="menuCards"></div>
+  </div>
+</section>
+
+<section id="explore">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-eyebrow">Explore the data</div>
+      <h2 class="sec-title">Every restaurant, plotted</h2>
+      <p class="sec-sub">Hover any point for the restaurant name and cuisine. Use the dropdown to switch what the vertical axis shows.</p>
+    </div>
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div class="panel-title">Cost vs. selected metric</div>
+          <div class="panel-hint">Bubble size = review volume</div>
+        </div>
+        <select id="metricSelect">
+          <option value="avg_rating">Average Rating</option>
+          <option value="avg_sentiment">Average Sentiment</option>
+          <option value="log_n_reviews">Log(Review Count)</option>
+        </select>
+      </div>
+      <div id="scatterChart" style="height:460px;"></div>
+    </div>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-eyebrow">Side by side</div>
+      <h2 class="sec-title">How the segments compare</h2>
+    </div>
+    <div class="chart-grid">
+      <div class="panel">
+        <div class="panel-title">Average cost &amp; sentiment by segment</div>
+        <div class="panel-hint">Grouped comparison across all three clusters</div>
+        <div id="barChart" style="height:340px;"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Cost distribution by segment</div>
+        <div class="panel-hint">Spread of prices within each cluster</div>
+        <div id="boxChart" style="height:340px;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="recommend">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-eyebrow">From clusters to action</div>
+      <h2 class="sec-title">What to actually do about it</h2>
+    </div>
+    <div class="rec-grid">
+      <div class="rec-card red">
+        <h3>For Zomato</h3>
+        <p>The Budget &amp; Lower-Sentiment segment is the largest group (42 restaurants) <em>and</em> the lowest-rated — the highest-ROI target for a focused quality-improvement outreach, rather than a platform-wide initiative. The Budget-Mid segment is an under-merchandised "great value" opportunity for a curated collection.</p>
+      </div>
+      <div class="rec-card turmeric">
+        <h3>For restaurant owners</h3>
+        <p>Landing in the lower-sentiment segment points to a service/consistency issue, not a pricing one — the gap is driven more by review tone than cost. Budget-Mid restaurants have room to test modest price increases without losing their value positioning.</p>
+      </div>
+      <div class="rec-card green">
+        <h3>For diners</h3>
+        <p>"Top-rated / occasion dining" recommendations should draw from the Premium segment. "Best value nearby" should draw from Budget-Mid. Segments are re-computed periodically, so a restaurant's placement can shift as new reviews arrive.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="notes">
+  <div class="wrap">
+    <div class="fine-print">
+      <h4>The fine print</h4>
+      <p>Based on ~100 Hyderabad restaurants — a small, single-city sample, so segment boundaries shouldn't be reused as-is for another city. A resampling stability check found moderate (not high) consistency (mean Adjusted Rand Index 0.664): broad patterns are trustworthy, but any single restaurant near a segment boundary should be read as provisional. Sentiment is scored with a general-purpose lexicon (VADER), not one trained specifically on restaurant reviews. Segments are driven primarily by review-text content and cuisine identity rather than price directly — the price/quality pattern shown here is a real but secondary effect.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>Zomato Restaurant Clustering &amp; Sentiment Analysis — capstone project</div>
+    <div>Data: Zomato Hyderabad listings &amp; reviews</div>
+  </div>
+</footer>
+
+<script>
+const DATA = [{"Name": "Paradise", "Cost": 800.0, "avg_rating": 4.7, "avg_sentiment": 0.841, "n_reviews": 100, "cluster": 0, "cuisines_str": "Biryani, North Indian, Chinese", "log_n_reviews": 4.62}, {"Name": "Flechazo", "Cost": 1300.0, "avg_rating": 4.66, "avg_sentiment": 0.813, "n_reviews": 100, "cluster": 0, "cuisines_str": "Asian, Mediterranean, North Indian", "log_n_reviews": 4.62}, {"Name": "Shah Ghouse Hotel & Restaurant", "Cost": 800.0, "avg_rating": 3.21, "avg_sentiment": 0.289, "n_reviews": 100, "cluster": 1, "cuisines_str": "Biryani, North Indian, Chinese", "log_n_reviews": 4.62}, {"Name": "Over The Moon Brew Company", "Cost": 1200.0, "avg_rating": 4.34, "avg_sentiment": 0.781, "n_reviews": 100, "cluster": 0, "cuisines_str": "Asian, Continental, North Indian", "log_n_reviews": 4.62}, {"Name": "The Fisherman's Wharf", "Cost": 1500.0, "avg_rating": 4.22, "avg_sentiment": 0.783, "n_reviews": 100, "cluster": 0, "cuisines_str": "Seafood, Goan, North Indian", "log_n_reviews": 4.62}, {"Name": "eat.fit", "Cost": 500.0, "avg_rating": 3.2, "avg_sentiment": 0.372, "n_reviews": 100, "cluster": 1, "cuisines_str": "Healthy Food, North Indian, Continental", "log_n_reviews": 4.62}, {"Name": "Shah Ghouse Spl Shawarma", "Cost": 300.0, "avg_rating": 3.43, "avg_sentiment": 0.359, "n_reviews": 100, "cluster": 1, "cuisines_str": "Lebanese", "log_n_reviews": 4.62}, {"Name": "Hyper Local", "Cost": 1000.0, "avg_rating": 3.64, "avg_sentiment": 0.592, "n_reviews": 100, "cluster": 0, "cuisines_str": "American, Chinese, North Indian", "log_n_reviews": 4.62}, {"Name": "Cream Stone", "Cost": 350.0, "avg_rating": 3.84, "avg_sentiment": 0.499, "n_reviews": 100, "cluster": 2, "cuisines_str": "Ice Cream, Desserts", "log_n_reviews": 4.62}, {"Name": "Barbeque Nation", "Cost": 1600.0, "avg_rating": 4.12, "avg_sentiment": 0.739, "n_reviews": 100, "cluster": 0, "cuisines_str": "Mediterranean, North Indian, Kebab", "log_n_reviews": 4.62}, {"Name": "Absolute Sizzlers", "Cost": 750.0, "avg_rating": 3.62, "avg_sentiment": 0.495, "n_reviews": 100, "cluster": 1, "cuisines_str": "Continental, American, Chinese", "log_n_reviews": 4.62}, {"Name": "The Lal Street - Bar Exchange", "Cost": 1300.0, "avg_rating": 3.45, "avg_sentiment": 0.532, "n_reviews": 100, "cluster": 0, "cuisines_str": "North Indian, Italian, Finger Food", "log_n_reviews": 4.62}, {"Name": "AB's - Absolute Barbecues", "Cost": 1500.0, "avg_rating": 4.88, "avg_sentiment": 0.913, "n_reviews": 100, "cluster": 0, "cuisines_str": "European, Mediterranean, North Indian", "log_n_reviews": 4.62}, {"Name": "KFC", "Cost": 500.0, "avg_rating": 2.85, "avg_sentiment": 0.135, "n_reviews": 100, "cluster": 1, "cuisines_str": "Burger, Fast Food", "log_n_reviews": 4.62}, {"Name": "NorFest - The Dhaba", "Cost": 550.0, "avg_rating": 4.03, "avg_sentiment": 0.675, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian", "log_n_reviews": 4.62}, {"Name": "Hotel Zara Hi-Fi", "Cost": 400.0, "avg_rating": 2.4, "avg_sentiment": -0.103, "n_reviews": 100, "cluster": 1, "cuisines_str": "Chinese, North Indian", "log_n_reviews": 4.62}, {"Name": "Pakwaan Grand", "Cost": 400.0, "avg_rating": 2.71, "avg_sentiment": 0.102, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Chinese, Biryani", "log_n_reviews": 4.62}, {"Name": "13 Dhaba", "Cost": 450.0, "avg_rating": 3.48, "avg_sentiment": 0.372, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian", "log_n_reviews": 4.62}, {"Name": "Jonathan's Kitchen - Holiday Inn Express & Suites", "Cost": 1900.0, "avg_rating": 3.54, "avg_sentiment": 0.587, "n_reviews": 100, "cluster": 0, "cuisines_str": "North Indian, Japanese, Italian", "log_n_reviews": 4.62}, {"Name": "Amul", "Cost": 150.0, "avg_rating": 3.93, "avg_sentiment": 0.334, "n_reviews": 99, "cluster": 2, "cuisines_str": "Ice Cream, Desserts", "log_n_reviews": 4.61}, {"Name": "SKYHY", "Cost": 1400.0, "avg_rating": 3.37, "avg_sentiment": 0.556, "n_reviews": 100, "cluster": 0, "cuisines_str": "North Indian, Chinese, Continental", "log_n_reviews": 4.62}, {"Name": "Tiki Shack", "Cost": 1000.0, "avg_rating": 3.48, "avg_sentiment": 0.567, "n_reviews": 100, "cluster": 0, "cuisines_str": "Continental", "log_n_reviews": 4.62}, {"Name": "Mustang Terrace Lounge", "Cost": 1300.0, "avg_rating": 3.31, "avg_sentiment": 0.429, "n_reviews": 100, "cluster": 0, "cuisines_str": "Mexican, Italian, North Indian", "log_n_reviews": 4.62}, {"Name": "3B's - Buddies, Bar & Barbecue", "Cost": 1100.0, "avg_rating": 4.76, "avg_sentiment": 0.817, "n_reviews": 100, "cluster": 0, "cuisines_str": "North Indian, Mediterranean, European", "log_n_reviews": 4.62}, {"Name": "Behrouz Biryani", "Cost": 600.0, "avg_rating": 2.82, "avg_sentiment": 0.278, "n_reviews": 100, "cluster": 1, "cuisines_str": "Mughlai, Biryani", "log_n_reviews": 4.62}, {"Name": "Hunger Maggi Point", "Cost": 200.0, "avg_rating": 3.12, "avg_sentiment": 0.158, "n_reviews": 100, "cluster": 1, "cuisines_str": "Fast Food", "log_n_reviews": 4.62}, {"Name": "Pista House", "Cost": 1000.0, "avg_rating": 3.23, "avg_sentiment": 0.43, "n_reviews": 100, "cluster": 1, "cuisines_str": "Bakery, North Indian, Mughlai", "log_n_reviews": 4.62}, {"Name": "Marsala Food Company", "Cost": 700.0, "avg_rating": 3.46, "avg_sentiment": 0.553, "n_reviews": 100, "cluster": 1, "cuisines_str": "Arabian, North Indian, Chinese", "log_n_reviews": 4.62}, {"Name": "Mazzo - Marriott Executive Apartments", "Cost": 1700.0, "avg_rating": 4.19, "avg_sentiment": 0.827, "n_reviews": 100, "cluster": 0, "cuisines_str": "Italian, North Indian, South Indian", "log_n_reviews": 4.62}, {"Name": "Green Bawarchi Restaurant", "Cost": 700.0, "avg_rating": 3.49, "avg_sentiment": 0.193, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Chinese, Biryani", "log_n_reviews": 4.62}, {"Name": "Banana Leaf Multicuisine Restaurant", "Cost": 700.0, "avg_rating": 3.69, "avg_sentiment": 0.476, "n_reviews": 100, "cluster": 1, "cuisines_str": "Biryani, South Indian, North Indian", "log_n_reviews": 4.62}, {"Name": "Kritunga Restaurant", "Cost": 500.0, "avg_rating": 3.47, "avg_sentiment": 0.247, "n_reviews": 100, "cluster": 1, "cuisines_str": "Andhra, Biryani, Hyderabadi", "log_n_reviews": 4.62}, {"Name": "The Glass Onion", "Cost": 1200.0, "avg_rating": 3.83, "avg_sentiment": 0.758, "n_reviews": 100, "cluster": 0, "cuisines_str": "North Indian, Continental, Italian", "log_n_reviews": 4.62}, {"Name": "Frio Bistro", "Cost": 1200.0, "avg_rating": 3.61, "avg_sentiment": 0.609, "n_reviews": 100, "cluster": 0, "cuisines_str": "European, Italian, Continental", "log_n_reviews": 4.62}, {"Name": "Karachi Bakery", "Cost": 500.0, "avg_rating": 3.8, "avg_sentiment": 0.421, "n_reviews": 100, "cluster": 2, "cuisines_str": "Bakery, Fast Food, Desserts", "log_n_reviews": 4.62}, {"Name": "Karachi Cafe", "Cost": 600.0, "avg_rating": 3.72, "avg_sentiment": 0.522, "n_reviews": 100, "cluster": 2, "cuisines_str": "Cafe, Desserts, Fast Food", "log_n_reviews": 4.62}, {"Name": "The Foodie Monster Kitchen", "Cost": 500.0, "avg_rating": 3.58, "avg_sentiment": 0.473, "n_reviews": 100, "cluster": 2, "cuisines_str": "American, Wraps, Desserts", "log_n_reviews": 4.62}, {"Name": "Ulavacharu", "Cost": 1400.0, "avg_rating": 3.22, "avg_sentiment": 0.36, "n_reviews": 100, "cluster": 1, "cuisines_str": "Andhra, North Indian, Chinese", "log_n_reviews": 4.62}, {"Name": "Shanghai Chef 2", "Cost": 800.0, "avg_rating": 3.06, "avg_sentiment": 0.406, "n_reviews": 100, "cluster": 1, "cuisines_str": "Chinese, Thai, Indonesian", "log_n_reviews": 4.62}, {"Name": "Udipi's Upahar", "Cost": 500.0, "avg_rating": 4.03, "avg_sentiment": 0.377, "n_reviews": 100, "cluster": 1, "cuisines_str": "South Indian, North Indian, Chinese", "log_n_reviews": 4.62}, {"Name": "Mathura Vilas", "Cost": 500.0, "avg_rating": 2.82, "avg_sentiment": 0.294, "n_reviews": 100, "cluster": 1, "cuisines_str": "South Indian, North Indian, Chinese", "log_n_reviews": 4.62}, {"Name": "Gal Punjab Di", "Cost": 800.0, "avg_rating": 3.61, "avg_sentiment": 0.617, "n_reviews": 100, "cluster": 0, "cuisines_str": "North Indian, Continental", "log_n_reviews": 4.62}, {"Name": "Hitech Bawarchi Food Zone", "Cost": 500.0, "avg_rating": 3.05, "avg_sentiment": 0.022, "n_reviews": 100, "cluster": 1, "cuisines_str": "Biryani, North Indian, Chinese", "log_n_reviews": 4.62}, {"Name": "Biryanis And More", "Cost": 500.0, "avg_rating": 3.74, "avg_sentiment": 0.363, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Biryani, Chinese", "log_n_reviews": 4.62}, {"Name": "Asian Meal Box", "Cost": 200.0, "avg_rating": 2.58, "avg_sentiment": 0.077, "n_reviews": 100, "cluster": 1, "cuisines_str": "Asian", "log_n_reviews": 4.62}, {"Name": "Cafe Eclat", "Cost": 700.0, "avg_rating": 3.59, "avg_sentiment": 0.587, "n_reviews": 100, "cluster": 2, "cuisines_str": "Cafe, Bakery", "log_n_reviews": 4.62}, {"Name": "Feast - Sheraton Hyderabad Hotel", "Cost": 2250.0, "avg_rating": 4.22, "avg_sentiment": 0.778, "n_reviews": 100, "cluster": 0, "cuisines_str": "Modern Indian, Asian, Continental", "log_n_reviews": 4.62}, {"Name": "Being Hungry", "Cost": 450.0, "avg_rating": 3.65, "avg_sentiment": 0.326, "n_reviews": 99, "cluster": 1, "cuisines_str": "North Indian, Chinese", "log_n_reviews": 4.61}, {"Name": "Tempteys", "Cost": 350.0, "avg_rating": 3.85, "avg_sentiment": 0.461, "n_reviews": 100, "cluster": 2, "cuisines_str": "Desserts, Beverages", "log_n_reviews": 4.62}, {"Name": "KS Bakers", "Cost": 200.0, "avg_rating": 3.96, "avg_sentiment": 0.653, "n_reviews": 100, "cluster": 2, "cuisines_str": "Bakery, Desserts, Fast Food", "log_n_reviews": 4.62}, {"Name": "PourHouse7", "Cost": 1200.0, "avg_rating": 3.86, "avg_sentiment": 0.596, "n_reviews": 100, "cluster": 0, "cuisines_str": "North Indian, Continental, Chinese", "log_n_reviews": 4.62}, {"Name": "Prism Club & Kitchen", "Cost": 1200.0, "avg_rating": 4.22, "avg_sentiment": 0.795, "n_reviews": 100, "cluster": 0, "cuisines_str": "Kebab, Continental, Italian", "log_n_reviews": 4.62}, {"Name": "Shree Santosh Dhaba Family Restaurant", "Cost": 500.0, "avg_rating": 2.83, "avg_sentiment": 0.01, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Chinese, Fast Food", "log_n_reviews": 4.62}, {"Name": "Dine O China", "Cost": 850.0, "avg_rating": 3.37, "avg_sentiment": 0.355, "n_reviews": 100, "cluster": 1, "cuisines_str": "Chinese, Asian, Momos", "log_n_reviews": 4.62}, {"Name": "Hyderabad Chefs", "Cost": 600.0, "avg_rating": 3.79, "avg_sentiment": 0.261, "n_reviews": 98, "cluster": 1, "cuisines_str": "North Indian, Chinese", "log_n_reviews": 4.6}, {"Name": "Komatose - Holiday Inn Express & Suites", "Cost": 1500.0, "avg_rating": 3.69, "avg_sentiment": 0.639, "n_reviews": 100, "cluster": 0, "cuisines_str": "North Indian, Chinese, Japanese", "log_n_reviews": 4.62}, {"Name": "Aromas@11SIX", "Cost": 750.0, "avg_rating": 3.46, "avg_sentiment": 0.32, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Chinese, Mughlai", "log_n_reviews": 4.62}, {"Name": "Yum Yum Tree - The Arabian Food Court", "Cost": 1200.0, "avg_rating": 3.56, "avg_sentiment": 0.521, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Hyderabadi", "log_n_reviews": 4.62}, {"Name": "The Tilt Bar Republic", "Cost": 1500.0, "avg_rating": 3.84, "avg_sentiment": 0.647, "n_reviews": 100, "cluster": 0, "cuisines_str": "North Indian, Continental, Italian", "log_n_reviews": 4.62}, {"Name": "The Indi Grill", "Cost": 1500.0, "avg_rating": 4.6, "avg_sentiment": 0.869, "n_reviews": 100, "cluster": 0, "cuisines_str": "BBQ, Asian, Modern Indian", "log_n_reviews": 4.62}, {"Name": "Eat India Company", "Cost": 1300.0, "avg_rating": 3.26, "avg_sentiment": 0.402, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Mughlai, Beverages", "log_n_reviews": 4.62}, {"Name": "Labonel", "Cost": 1000.0, "avg_rating": 3.92, "avg_sentiment": 0.663, "n_reviews": 100, "cluster": 2, "cuisines_str": "Bakery, Desserts", "log_n_reviews": 4.62}, {"Name": "Faasos", "Cost": 600.0, "avg_rating": 3.03, "avg_sentiment": 0.345, "n_reviews": 100, "cluster": 2, "cuisines_str": "Fast Food, Biryani, Desserts", "log_n_reviews": 4.62}, {"Name": "Royal Spicy Restaurant", "Cost": 700.0, "avg_rating": 3.74, "avg_sentiment": 0.311, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, South Indian", "log_n_reviews": 4.62}, {"Name": "The Old Madras Baking Company", "Cost": 350.0, "avg_rating": 3.62, "avg_sentiment": 0.646, "n_reviews": 99, "cluster": 2, "cuisines_str": "Bakery", "log_n_reviews": 4.61}, {"Name": "Squeeze @ The Lime", "Cost": 650.0, "avg_rating": 3.82, "avg_sentiment": 0.568, "n_reviews": 100, "cluster": 0, "cuisines_str": "Italian, North Indian, Chinese", "log_n_reviews": 4.62}, {"Name": "Khaan Saab", "Cost": 1100.0, "avg_rating": 3.8, "avg_sentiment": 0.558, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Mughlai", "log_n_reviews": 4.62}, {"Name": "Olive Garden", "Cost": 700.0, "avg_rating": 3.77, "avg_sentiment": 0.515, "n_reviews": 99, "cluster": 0, "cuisines_str": "North Indian, Chinese, Continental", "log_n_reviews": 4.61}, {"Name": "Delhi-39", "Cost": 600.0, "avg_rating": 2.98, "avg_sentiment": 0.076, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Chinese", "log_n_reviews": 4.62}, {"Name": "Al Saba Restaurant", "Cost": 750.0, "avg_rating": 3.14, "avg_sentiment": 0.244, "n_reviews": 99, "cluster": 1, "cuisines_str": "North Indian, Chinese, Seafood", "log_n_reviews": 4.61}, {"Name": "T Grill", "Cost": 700.0, "avg_rating": 3.17, "avg_sentiment": 0.447, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Andhra, Biryani", "log_n_reviews": 4.62}, {"Name": "Momos Delight", "Cost": 200.0, "avg_rating": 3.72, "avg_sentiment": 0.37, "n_reviews": 100, "cluster": 1, "cuisines_str": "Momos", "log_n_reviews": 4.62}, {"Name": "The Chocolate Room", "Cost": 600.0, "avg_rating": 2.83, "avg_sentiment": 0.21, "n_reviews": 100, "cluster": 2, "cuisines_str": "Cafe, Desserts", "log_n_reviews": 4.62}, {"Name": "American Wild Wings", "Cost": 600.0, "avg_rating": 3.97, "avg_sentiment": 0.653, "n_reviews": 77, "cluster": 2, "cuisines_str": "American, Fast Food, Salad", "log_n_reviews": 4.36}, {"Name": "Domino's Pizza", "Cost": 400.0, "avg_rating": 3.07, "avg_sentiment": 0.062, "n_reviews": 99, "cluster": 1, "cuisines_str": "Fast Food, Pizza", "log_n_reviews": 4.61}, {"Name": "Mohammedia Shawarma", "Cost": 150.0, "avg_rating": 2.99, "avg_sentiment": 0.006, "n_reviews": 100, "cluster": 1, "cuisines_str": "Street Food, Arabian", "log_n_reviews": 4.62}, {"Name": "Cascade - Radisson Hyderabad Hitec City", "Cost": 1800.0, "avg_rating": 4.26, "avg_sentiment": 0.776, "n_reviews": 100, "cluster": 0, "cuisines_str": "North Indian, Italian, Continental", "log_n_reviews": 4.62}, {"Name": "Collage - Hyatt Hyderabad Gachibowli", "Cost": 2250.0, "avg_rating": 3.41, "avg_sentiment": 0.519, "n_reviews": 100, "cluster": 0, "cuisines_str": "Continental, Italian, North Indian", "log_n_reviews": 4.62}, {"Name": "Zing's Northeast Kitchen", "Cost": 550.0, "avg_rating": 3.65, "avg_sentiment": 0.583, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Eastern, Momos", "log_n_reviews": 4.62}, {"Name": "Dunkin' Donuts", "Cost": 550.0, "avg_rating": 3.1, "avg_sentiment": 0.339, "n_reviews": 100, "cluster": 2, "cuisines_str": "Desserts, Cafe, Beverages", "log_n_reviews": 4.62}, {"Name": "Desi Bytes", "Cost": 400.0, "avg_rating": 2.9, "avg_sentiment": 0.194, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian, Chinese", "log_n_reviews": 4.62}, {"Name": "Hyderabadi Daawat", "Cost": 600.0, "avg_rating": 3.83, "avg_sentiment": 0.581, "n_reviews": 100, "cluster": 1, "cuisines_str": "Hyderabadi, Chinese, Mughlai", "log_n_reviews": 4.62}, {"Name": "Zega - Sheraton Hyderabad Hotel", "Cost": 1750.0, "avg_rating": 4.45, "avg_sentiment": 0.848, "n_reviews": 100, "cluster": 0, "cuisines_str": "Asian, Sushi", "log_n_reviews": 4.62}, {"Name": "Triptify", "Cost": 400.0, "avg_rating": 3.55, "avg_sentiment": 0.357, "n_reviews": 100, "cluster": 1, "cuisines_str": "North Indian", "log_n_reviews": 4.62}, {"Name": "Chinese Pavilion", "Cost": 1000.0, "avg_rating": 3.74, "avg_sentiment": 0.762, "n_reviews": 100, "cluster": 0, "cuisines_str": "Chinese, Seafood", "log_n_reviews": 4.62}];
+
+const CLUSTER_META = {
+  0: { name: "Premium & High-Rated", tag: "The splurge-worthy segment", color: "#CB202D" },
+  1: { name: "Budget & Lower-Sentiment", tag: "The largest, most improvable segment", color: "#3C7A5A" },
+  2: { name: "Budget-Mid & Mixed", tag: "The under-marketed value segment", color: "#C98A12" }
+};
+
+function summarize(data){
+  const byCluster = {};
+  data.forEach(r => {
+    if(!byCluster[r.cluster]) byCluster[r.cluster] = [];
+    byCluster[r.cluster].push(r);
+  });
+  const out = {};
+  Object.keys(byCluster).forEach(c => {
+    const rows = byCluster[c];
+    const avg = k => rows.reduce((s,r)=>s+r[k],0)/rows.length;
+    out[c] = { n: rows.length, cost: avg("Cost"), rating: avg("avg_rating"), sentiment: avg("avg_sentiment") };
+  });
+  return out;
+}
+const SUMMARY = summarize(DATA);
+
+/* ---------- Build menu cards ---------- */
+function starRow(rating){
+  const full = Math.round(rating);
+  let html = '<div class="stars">';
+  for(let i=0;i<5;i++){ html += `<span class="${i<full?'on':'off'}">★</span>`; }
+  html += `</div>`;
+  return html;
+}
+function buildCards(){
+  const container = document.getElementById("menuCards");
+  Object.keys(SUMMARY).sort().forEach(c=>{
+    const meta = CLUSTER_META[c] || {name:`Cluster ${c}`, tag:"", color:"#999"};
+    const s = SUMMARY[c];
+    const sentimentPct = Math.max(0, Math.min(100, (s.sentiment+1)/2*100));
+    const card = document.createElement("div");
+    card.className = "menu-card";
+    card.innerHTML = `
+      <div class="accent-bar" style="background:${meta.color}"></div>
+      <div class="card-name">${meta.name}</div>
+      <div class="card-tag">${meta.tag}</div>
+      <div class="price-badge"><sup>₹</sup>${Math.round(s.cost).toLocaleString()}</div>
+      <div class="price-label">Avg. cost for two</div>
+      <div class="row-label">Avg. rating</div>
+      ${starRow(s.rating)}
+      <div class="row-label">Sentiment intensity</div>
+      <div class="meter-track"><div class="meter-fill" style="width:${sentimentPct}%; background:${meta.color}"></div></div>
+      <div class="card-count">Based on <b>${s.n}</b> restaurants</div>
+    `;
+    container.appendChild(card);
+  });
+
+  // scroll reveal, with a safe fallback if IntersectionObserver is ever unavailable
+  const cards = document.querySelectorAll(".menu-card");
+  try {
+    const obs = new IntersectionObserver(entries=>{
+      entries.forEach((e,i)=>{
+        if(e.isIntersecting){
+          setTimeout(()=>e.target.classList.add("revealed"), i*90);
+          obs.unobserve(e.target);
+        }
+      });
+    }, {threshold:0.15});
+    cards.forEach(c=>obs.observe(c));
+  } catch (err) {
+    // no IntersectionObserver support -- just show the cards immediately rather than
+    // leaving them stuck at opacity:0 forever
+    cards.forEach(c=>c.classList.add("revealed"));
+  }
+}
+buildCards();
+
+/* ---------- Scatter chart with dropdown ---------- */
+const metricLabels = {
+  avg_rating: "Average Rating",
+  avg_sentiment: "Average Sentiment",
+  log_n_reviews: "Log(Review Count)"
+};
+
+function scatterTraces(metric){
+  return Object.keys(SUMMARY).sort().map(c=>{
+    const rows = DATA.filter(r=>String(r.cluster)===String(c));
+    const meta = CLUSTER_META[c] || {name:`Cluster ${c}`, color:"#999"};
+    return {
+      x: rows.map(r=>r.Cost),
+      y: rows.map(r=>r[metric]),
+      text: rows.map(r=>`<b>${r.Name}</b><br>${r.cuisines_str}`),
+      mode: "markers",
+      name: meta.name,
+      type: "scatter",
+      marker: { size: rows.map(r=>Math.max(6, r.log_n_reviews*4)), color: meta.color, opacity: 0.75, line:{width:0.5,color:"#fff"} },
+      hovertemplate: "%{text}<br>Cost: ₹%{x}<br>" + metricLabels[metric] + ": %{y}<extra></extra>"
+    };
+  });
+}
+
+const plotLayoutBase = {
+  font: { family: "Inter, sans-serif", color: "#241C15", size:12 },
+  paper_bgcolor: "rgba(0,0,0,0)",
+  plot_bgcolor: "rgba(0,0,0,0)",
+  margin: { t:10, r:10, b:44, l:52 },
+  legend: { orientation:"h", y:-0.22 },
+  xaxis: { title:"Cost (INR)", gridcolor:"#E4D8BE" },
+};
+
+Plotly.newPlot("scatterChart", scatterTraces("avg_rating"),
+  {...plotLayoutBase, yaxis:{title:metricLabels["avg_rating"], gridcolor:"#E4D8BE"}},
+  {displayModeBar:false, responsive:true});
+
+document.getElementById("metricSelect").addEventListener("change", function(){
+  const metric = this.value;
+  Plotly.react("scatterChart", scatterTraces(metric),
+    {...plotLayoutBase, yaxis:{title:metricLabels[metric], gridcolor:"#E4D8BE"}},
+    {displayModeBar:false, responsive:true});
+});
+
+/* ---------- Bar chart: cost & sentiment by cluster ---------- */
+const clusterIds = Object.keys(SUMMARY).sort();
+const clusterNames = clusterIds.map(c => (CLUSTER_META[c]||{}).name || `Cluster ${c}`);
+const clusterColors = clusterIds.map(c => (CLUSTER_META[c]||{}).color || "#999");
+
+Plotly.newPlot("barChart", [
+  {
+    x: clusterNames, y: clusterIds.map(c=>SUMMARY[c].sentiment),
+    type:"bar", name:"Avg Sentiment", marker:{color:clusterColors}, yaxis:"y1"
+  }
+], {
+  ...plotLayoutBase, margin:{t:10,r:10,b:70,l:52},
+  yaxis:{title:"Average Sentiment", gridcolor:"#E4D8BE"},
+  showlegend:false
+}, {displayModeBar:false, responsive:true});
+
+/* ---------- Box plot: cost distribution ---------- */
+Plotly.newPlot("boxChart", clusterIds.map(c=>({
+  y: DATA.filter(r=>String(r.cluster)===String(c)).map(r=>r.Cost),
+  type:"box", name: (CLUSTER_META[c]||{}).name || `Cluster ${c}`,
+  marker:{color:(CLUSTER_META[c]||{}).color || "#999"}, showlegend:false
+})), {
+  ...plotLayoutBase, margin:{t:10,r:10,b:70,l:52},
+  yaxis:{title:"Cost (INR)", gridcolor:"#E4D8BE"},
+}, {displayModeBar:false, responsive:true});
+
+window.addEventListener("resize", ()=>{
+  Plotly.Plots.resize("scatterChart");
+  Plotly.Plots.resize("barChart");
+  Plotly.Plots.resize("boxChart");
+});
+</script>
+</body>
+</html>
